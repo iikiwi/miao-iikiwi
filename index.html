@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🍜 美食点单</title>
+    <title>🍜 美食点单（云端版）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -489,13 +489,14 @@
             };
 
             try {
-                await saveOrderToCloud(order);
                 orders.unshift(order);
+                await saveAllOrdersToCloud(orders);
                 cart = [];
                 updateCartBadge();
                 toggleCart();
                 showToast('下单成功！');
             } catch (error) {
+                console.log('网络异常:', error);
                 showToast('网络异常，订单已保存到本地');
                 orders.unshift(order);
                 localStorage.setItem('localOrders', JSON.stringify(orders));
@@ -505,17 +506,21 @@
             }
         }
 
-        async function saveOrderToCloud(order) {
-            const data = { records: [order] };
-            const response = await fetch(`${SYNC_URL}/records`, {
-                method: 'POST',
+        async function saveAllOrdersToCloud(allOrders) {
+            const response = await fetch(SYNC_URL, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Master-Key': API_KEY
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ records: allOrders })
             });
-            if (!response.ok) throw new Error('保存失败');
+            if (!response.ok) {
+                console.log('保存失败，状态码:', response.status);
+                throw new Error('保存失败');
+            }
+            localStorage.setItem('localOrders', JSON.stringify(allOrders));
+            console.log('订单保存成功！');
         }
 
         async function fetchOrdersFromCloud() {
